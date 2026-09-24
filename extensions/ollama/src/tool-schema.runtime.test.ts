@@ -36,8 +36,9 @@ describe("normalizeOllamaToolSchema", () => {
       required: ["query"],
     });
 
+    const properties = normalized.properties as Record<string, { type?: string } | undefined>;
     expect(normalized.type).toBe("object");
-    expect((normalized.properties as Record<string, { type?: string }>).query.type).toBe("string");
-    expect((normalized.properties as Record<string, { type?: string }>).tags.type).toBe("array");
+    expect(properties.query?.type).toBe("string");
+    expect(properties.tags?.type).toBe("array");
   });
 });

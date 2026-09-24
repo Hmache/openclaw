@@ -41,4 +41,45 @@ describe("normalizeOllamaToolSchema", () => {
     expect(properties.query?.type).toBe("string");
     expect(properties.tags?.type).toBe("array");
   });
+
+  it("keeps patternProperties-based free-form schemas without injecting empty properties", () => {
+    // TypeBox's Type.Record(Type.String(), Type.Unknown()) emits patternProperties,
+    // not additionalProperties, e.g. the real Tool Search "Tool Call" meta-tool's
+    // nested `args` property (src/agents/tool-search.ts).
+    const normalized = normalizeOllamaToolSchema({
+      type: "object",
+      patternProperties: { "^.*$": {} },
+      description: "Tool input.",
+    });
+
+    expect(normalized).toEqual({
+      type: "object",
+      patternProperties: { "^.*$": {} },
+      description: "Tool input.",
+    });
+  });
+
+  it("keeps a nested patternProperties args property free-form inside the real Tool Call schema", () => {
+    // Mirrors the exact shape src/agents/tool-search.ts's TOOL_CALL_RAW_TOOL_NAME
+    // sends: a root object with a required `id` and an optional free-form `args`.
+    const normalized = normalizeOllamaToolSchema(
+      {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "Tool search result id or tool name." },
+          args: {
+            type: "object",
+            patternProperties: { "^.*$": {} },
+            description: "Tool input.",
+          },
+        },
+      },
+      true,
+    );
+
+    const properties = normalized.properties as Record<string, Record<string, unknown>>;
+    expect(properties.args.properties).toBeUndefined();
+    expect(properties.args.patternProperties).toEqual({ "^.*$": {} });
+  });
 });

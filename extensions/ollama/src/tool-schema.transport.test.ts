@@ -26,6 +26,7 @@ afterEach(async () => {
 type CapturedRequest = { tools?: Array<{ function?: { parameters?: unknown } }> };
 
 async function startToolCallChatServer(
+  toolCallName: string,
   toolCallArguments: Record<string, unknown>,
 ): Promise<{ baseUrl: string; capturedRequest: Promise<CapturedRequest> }> {
   let resolveCaptured: (value: CapturedRequest) => void;
@@ -50,7 +51,7 @@ async function startToolCallChatServer(
             role: "assistant",
             content: "",
             tool_calls: [
-              { id: "call_1", function: { name: "exec", arguments: toolCallArguments } },
+              { id: "call_1", function: { name: toolCallName, arguments: toolCallArguments } },
             ],
           },
           done: true,
@@ -75,39 +76,72 @@ const freeFormExecTool = {
   parameters: { type: "object", additionalProperties: true },
 };
 
+// Mirrors the exact schema src/agents/tool-search.ts's TOOL_CALL_RAW_TOOL_NAME sends
+// when Tool Search is enabled: a required `id` plus an optional free-form `args`
+// built from TypeBox's Type.Record(), which emits `patternProperties`, not
+// `additionalProperties`.
+const toolCallDispatcherTool = {
+  name: "tool_call",
+  description: "Call an exact Tool Search result id or name through OpenClaw.",
+  parameters: {
+    type: "object",
+    required: ["id"],
+    properties: {
+      id: { type: "string", description: "Tool search result id or tool name." },
+      args: {
+        type: "object",
+        patternProperties: { "^.*$": {} },
+        description: "Tool input.",
+      },
+    },
+  },
+};
+
+async function runToolCallScenario(
+  tool: Record<string, unknown>,
+  toolCallArguments: Record<string, unknown>,
+) {
+  const { baseUrl, capturedRequest } = await startToolCallChatServer(
+    tool.name as string,
+    toolCallArguments,
+  );
+  const streamFn = createOllamaStreamFn(baseUrl);
+  const stream = streamFn(
+    {
+      api: "ollama",
+      provider: "ollama",
+      id: "proof-model",
+      input: ["text"],
+      contextWindow: 65536,
+    } as never,
+    {
+      messages: [{ role: "user", content: "what kernel is this?" }],
+      tools: [tool],
+    } as never,
+    {},
+  );
+
+  let toolCall: { name?: unknown; arguments?: unknown } | undefined;
+  for await (const event of stream as AsyncIterable<Record<string, unknown>>) {
+    if (event.type === "done") {
+      const message = event.message as { content?: unknown[] } | undefined;
+      toolCall = message?.content?.find(
+        (block): block is { type: string; name?: unknown; arguments?: unknown } =>
+          (block as { type?: unknown }).type === "toolCall",
+      );
+    }
+  }
+
+  const request = await capturedRequest;
+  return { request, toolCall };
+}
+
 describe("free-form object tool schema over the real Ollama NDJSON transport (#157039)", () => {
   it("sends the free-form schema unmodified and returns populated tool call arguments", async () => {
     const toolCallArguments = { command: "uname -r" };
-    const { baseUrl, capturedRequest } = await startToolCallChatServer(toolCallArguments);
-    const streamFn = createOllamaStreamFn(baseUrl);
-    const stream = streamFn(
-      {
-        api: "ollama",
-        provider: "ollama",
-        id: "proof-model",
-        input: ["text"],
-        contextWindow: 65536,
-      } as never,
-      {
-        messages: [{ role: "user", content: "what kernel is this?" }],
-        tools: [freeFormExecTool],
-      } as never,
-      {},
-    );
-
-    let toolCall: { name?: unknown; arguments?: unknown } | undefined;
-    for await (const event of stream as AsyncIterable<Record<string, unknown>>) {
-      if (event.type === "done") {
-        const message = event.message as { content?: unknown[] } | undefined;
-        toolCall = message?.content?.find(
-          (block): block is { type: string; name?: unknown; arguments?: unknown } =>
-            (block as { type?: unknown }).type === "toolCall",
-        );
-      }
-    }
+    const { request, toolCall } = await runToolCallScenario(freeFormExecTool, toolCallArguments);
 
     // The request we actually sent over the wire never gained an empty `properties`.
-    const request = await capturedRequest;
     expect(request.tools?.[0]?.function?.parameters).toEqual({
       type: "object",
       additionalProperties: true,
@@ -116,6 +150,23 @@ describe("free-form object tool schema over the real Ollama NDJSON transport (#1
     // The server's populated tool_calls response round trips into populated arguments,
     // not the {} the pre-fix schema produced from a real Ollama server.
     expect(toolCall?.name).toBe("exec");
+    expect(toolCall?.arguments).toEqual(toolCallArguments);
+  });
+
+  it("keeps the real Tool Search dispatcher's nested patternProperties args free-form", async () => {
+    const toolCallArguments = { command: "uname -r" };
+    const { request, toolCall } = await runToolCallScenario(
+      toolCallDispatcherTool,
+      toolCallArguments,
+    );
+
+    const parameters = request.tools?.[0]?.function?.parameters as {
+      properties?: { args?: Record<string, unknown> };
+    };
+    expect(parameters.properties?.args?.properties).toBeUndefined();
+    expect(parameters.properties?.args?.patternProperties).toEqual({ "^.*$": {} });
+
+    expect(toolCall?.name).toBe("tool_call");
     expect(toolCall?.arguments).toEqual(toolCallArguments);
   });
 });

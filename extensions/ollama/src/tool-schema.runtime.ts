@@ -93,10 +93,14 @@ export function normalizeOllamaToolSchema(
   ) {
     normalized.type = inferOllamaSchemaType(normalized) ?? (isRoot ? "object" : "string");
   }
-  // Free-form objects (additionalProperties not false) must not gain an empty
-  // `properties`, or Ollama reads the schema as closed and returns empty tool args.
+  // Free-form objects must not gain an empty `properties`, or Ollama reads the
+  // schema as closed and returns empty tool args. A schema is free-form when it
+  // allows arbitrary keys through `additionalProperties` (not `false`) or through
+  // `patternProperties` (TypeBox's `Type.Record()` emits the latter, with no
+  // `additionalProperties` key at all).
   const isFreeFormObject =
-    "additionalProperties" in normalized && normalized.additionalProperties !== false;
+    ("additionalProperties" in normalized && normalized.additionalProperties !== false) ||
+    isRecord(normalized.patternProperties);
   if (normalized.type === "object" && !isRecord(normalized.properties) && !isFreeFormObject) {
     normalized.properties = {};
   }

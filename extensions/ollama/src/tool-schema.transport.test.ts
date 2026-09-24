@@ -1,10 +1,4 @@
-// Real-transport regression proof for the free-form object tool-schema fix (#157039).
-// Drives createOllamaStreamFn through a real loopback /api/chat NDJSON server: real
-// HTTP, real SSRF-guarded fetch, real request-body serialization, real NDJSON
-// parsing. Nothing is mocked; only the network endpoint is local. This proves both
-// halves of the bug: the outgoing schema for a free-form object tool no longer gains
-// an empty `properties`, and a populated tool_calls response from the server round
-// trips into populated `toolCall.arguments` on the parsed assistant message.
+// Exercise request serialization and NDJSON parsing with scripted Ollama responses.
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
@@ -141,20 +135,20 @@ describe("free-form object tool schema over the real Ollama NDJSON transport (#1
     const toolCallArguments = { command: "uname -r" };
     const { request, toolCall } = await runToolCallScenario(freeFormExecTool, toolCallArguments);
 
-    // The request we actually sent over the wire never gained an empty `properties`.
     expect(request.tools?.[0]?.function?.parameters).toEqual({
       type: "object",
       additionalProperties: true,
     });
 
-    // The server's populated tool_calls response round trips into populated arguments,
-    // not the {} the pre-fix schema produced from a real Ollama server.
     expect(toolCall?.name).toBe("exec");
     expect(toolCall?.arguments).toEqual(toolCallArguments);
   });
 
   it("keeps the real Tool Search dispatcher's nested patternProperties args free-form", async () => {
-    const toolCallArguments = { command: "uname -r" };
+    const toolCallArguments = {
+      id: "openclaw:core:exec",
+      args: { command: "uname -r" },
+    };
     const { request, toolCall } = await runToolCallScenario(
       toolCallDispatcherTool,
       toolCallArguments,

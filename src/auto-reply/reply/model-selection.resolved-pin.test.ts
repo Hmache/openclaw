@@ -104,6 +104,53 @@ test.each(["origin", "notice"])(
   },
 );
 
+test("resets a disallowed pin to the configured primary, not the first catalog entry", async () => {
+  await withStateDirEnv("reply-disallowed-primary-", async () => {
+    // Primary is declared second, after a non-primary allowed model, so a fallback to
+    // "first allowed catalog entry" is distinguishable from a fallback to primary.
+    const cfg: OpenClawConfig = {
+      plugins: { enabled: false },
+      agents: {
+        defaults: {
+          model: { primary: "custom/primary" },
+          models: { "custom/other": {}, "custom/primary": {} },
+        },
+      },
+    };
+    const sessionKey = "agent:main:disallowed-primary";
+    const entry: SessionEntry = {
+      sessionId: "session-id",
+      updatedAt: 1,
+      providerOverride: "custom",
+      modelOverride: "denied",
+      modelOverrideSource: "user",
+    };
+    const sessionStore = { [sessionKey]: entry };
+    const selection = await createModelSelectionState({
+      agentId: "main",
+      cfg,
+      agentCfg: cfg.agents?.defaults,
+      sessionEntry: entry,
+      sessionStore,
+      sessionKey,
+      defaultProvider: "custom",
+      defaultModel: "primary",
+      primaryProvider: "custom",
+      primaryModel: "primary",
+      // Mirrors production: the turn's current selection is the pinned override.
+      provider: "custom",
+      model: "denied",
+      hasModelDirective: false,
+    });
+    expect(selection).toMatchObject({
+      provider: "custom",
+      model: "primary",
+      resetModelOverride: true,
+      resetModelOverrideReason: "disallowed",
+    });
+  });
+});
+
 const metadataSnapshot = createPluginMetadataSnapshotFixture({
   plugins: [
     {

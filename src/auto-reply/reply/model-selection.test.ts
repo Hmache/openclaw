@@ -2328,48 +2328,6 @@ describe("createModelSelectionState degraded-catalog override preservation", () 
     expect(state.resetModelOverride).toBe(true);
   });
 
-  it("resets a disallowed pin to the configured primary, not the first catalog entry", async () => {
-    // Primary is declared second, after a non-primary allowed model, so a fallback to
-    // "first allowed catalog entry" is distinguishable from a fallback to primary.
-    const cfg = {
-      agents: {
-        defaults: {
-          model: { primary: "openai/gpt-4o-mini" },
-          models: { "openai/gpt-4o-turbo": {}, "openai/gpt-4o-mini": {} },
-        },
-      },
-    } as unknown as OpenClawConfig;
-    const sessionKey = "agent:main:discord:channel:g2";
-    const sessionEntry: SessionEntry = {
-      sessionId: "session-id",
-      updatedAt: Date.now(),
-      providerOverride: "openai",
-      modelOverride: "gpt-4o",
-      modelOverrideSource: "user",
-    };
-    const sessionStore = { [sessionKey]: sessionEntry };
-    const state = await createModelSelectionState({
-      agentId: "main",
-      cfg,
-      agentCfg: cfg.agents?.defaults,
-      sessionEntry,
-      sessionStore,
-      sessionKey,
-      defaultProvider: "openai",
-      defaultModel: "gpt-4o-mini",
-      primaryProvider: "openai",
-      primaryModel: "gpt-4o-mini",
-      // Mirrors production: the turn's current selection is the pinned override.
-      provider: "openai",
-      model: "gpt-4o",
-      hasModelDirective: false,
-    });
-    expect(state.resetModelOverrideReason).toBe("disallowed");
-    expect(state.resetModelOverride).toBe(true);
-    expect(state.model).toBe("gpt-4o-mini");
-    expect(state.provider).toBe("openai");
-  });
-
   it("keeps a configured pin that is present on an authoritative catalog", async () => {
     const { state } = await run({
       cfg: permissiveCfg,

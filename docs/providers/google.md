@@ -73,6 +73,55 @@ the Gateway already runs inside a managed Google Cloud environment.
 
   </Tab>
 
+  <Tab title="Vertex AI (ADC)">
+    **Recommended for:** Gateways that already run inside a managed Google
+    Cloud environment.
+
+    <Steps>
+      <Step title="Authenticate with gcloud">
+        ```bash
+        gcloud auth application-default login
+        ```
+
+        This writes Application Default Credentials (ADC) to
+        `~/.config/gcloud/application_default_credentials.json` (or
+        `%APPDATA%\gcloud\application_default_credentials.json` on Windows).
+        OpenClaw reads this file directly; no separate `openclaw` auth command
+        is needed.
+      </Step>
+      <Step title="Set the project and location">
+        ```bash
+        export GOOGLE_CLOUD_PROJECT="my-gcp-project"
+        export GOOGLE_CLOUD_LOCATION="us-central1"
+        ```
+
+        Both variables are required. OpenClaw only activates the
+        `google-vertex` provider once ADC, `GOOGLE_CLOUD_PROJECT` (or
+        `GCLOUD_PROJECT`), and `GOOGLE_CLOUD_LOCATION` are all present.
+      </Step>
+      <Step title="Set a default model">
+        ```json5
+        {
+          agents: {
+            defaults: {
+              model: { primary: "google-vertex/gemini-3.1-pro-preview" },
+            },
+          },
+        }
+        ```
+      </Step>
+    </Steps>
+
+    <Tip>
+    Leave `models.providers.google-vertex.apiKey` unset; OpenClaw resolves ADC
+    for you. If something sets that field explicitly, it must be the literal
+    string `gcp-vertex-credentials`. Any other value — including a token from
+    `gcloud auth print-access-token` — is sent as a plain API key header, and
+    Vertex rejects it with a 401 `UNAUTHENTICATED` error.
+    </Tip>
+
+  </Tab>
+
   <Tab title="Gemini CLI runtime">
     **Advanced use only:** run a canonical `google/*` model through an installed
     Gemini CLI while keeping authentication on the supported AI Studio API-key

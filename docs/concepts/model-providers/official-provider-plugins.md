@@ -153,7 +153,12 @@ Claude CLI reuse (`claude -p`) is a sanctioned OpenClaw integration path. Anthro
 ### Google Vertex and Gemini CLI runtime
 
 - `google-vertex`: managed Google Cloud access through gcloud Application
-  Default Credentials.
+  Default Credentials (ADC). Requires `GOOGLE_CLOUD_PROJECT` (or
+  `GCLOUD_PROJECT`) and `GOOGLE_CLOUD_LOCATION`, plus ADC from
+  `gcloud auth application-default login`. Leave `apiKey` unset; if it is set
+  explicitly it must be the literal value `gcp-vertex-credentials`, otherwise
+  Vertex rejects the request with a 401 `UNAUTHENTICATED` error. See
+  [Google Vertex AI setup](/providers/google#getting-started).
 - `google-gemini-cli`: optional local runtime for an explicitly configured
   canonical `google/*` model.
 

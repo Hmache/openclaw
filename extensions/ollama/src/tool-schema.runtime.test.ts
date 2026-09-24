@@ -78,8 +78,11 @@ describe("normalizeOllamaToolSchema", () => {
       true,
     );
 
-    const properties = normalized.properties as Record<string, Record<string, unknown>>;
-    expect(properties.args.properties).toBeUndefined();
-    expect(properties.args.patternProperties).toEqual({ "^.*$": {} });
+    const properties = normalized.properties as Record<string, Record<string, unknown> | undefined>;
+    expect(properties.args).toStrictEqual({
+      type: "object",
+      patternProperties: { "^.*$": {} },
+      description: "Tool input.",
+    });
   });
 });

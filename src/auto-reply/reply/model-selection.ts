@@ -361,7 +361,7 @@ export async function createModelSelectionState(params: {
     }
   }
   if (
-    staleDirectStoredOverride &&
+    resetModelOverride &&
     params.provider === directOverrideRef?.provider &&
     params.model === directOverrideRef.model
   ) {

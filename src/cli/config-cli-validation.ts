@@ -458,6 +458,7 @@ export async function validateConfigMutation(params: {
   const requiresFullSchema = operations.some(
     (operation) =>
       operation.inputMode === "unset" ||
+      operation.inputMode === "builder" ||
       (operation.inputMode === "json" && operation.schemaValidated !== true),
   );
   const { refsToResolve, skippedExecRefs } = selectDryRunRefsForResolution({

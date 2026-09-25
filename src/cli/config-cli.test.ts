@@ -3941,7 +3941,7 @@ describe("config cli", () => {
       expect(payload.refsChecked).toBe(1);
       expect(payload.skippedExecRefs).toBe(0);
       expect(payload.checks).toEqual({
-        schema: false,
+        schema: true,
         resolvability: true,
         resolvabilityComplete: true,
       });
@@ -3975,7 +3975,7 @@ describe("config cli", () => {
           skippedExecRefs: number;
         };
         expect(payload.ok).toBe(true);
-        expect(payload.checks.schema).toBe(false);
+        expect(payload.checks.schema).toBe(true);
         expect(payload.checks.resolvability).toBe(true);
         expect(payload.checks.resolvabilityComplete).toBe(false);
         expect(payload.refsChecked).toBe(0);

@@ -312,6 +312,36 @@ describe("chat attachment read failures", () => {
     expect(onAttachmentsChange).not.toHaveBeenCalled();
   });
 
+  it("blocks a batch whose combined size overflows the shared WS frame even though each file is individually within limits", async () => {
+    const onAttachmentsChange = vi.fn();
+    handleChatAttachmentPaste(
+      pasteEventWithFiles([
+        new File(["aaaaa"], "one.png", { type: "image/png" }),
+        new File(["bbbbb"], "two.png", { type: "image/png" }),
+        new File(["ccccc"], "three.png", { type: "image/png" }),
+      ]),
+      {
+        attachmentLimits: { maxBytes: 12, maxImageBytes: 100 },
+        attachments: [],
+        onAttachmentsChange,
+      },
+    );
+    await vi.waitFor(() => {
+      expect(onAttachmentsChange).toHaveBeenCalledTimes(2);
+    });
+    await toastHost.updateComplete;
+    // "three.png" clears the per-file maxImageBytes ceiling on its own, but the
+    // running total (5 + 5 + 5 = 15 bytes) overflows the shared one-frame
+    // maxBytes ceiling (12), so only the first two files attach; sending the
+    // full batch would otherwise overflow the WS frame and get force-closed
+    // with a 1009 ("Message Too Big") after upload.
+    expect(toastHost.querySelector(".app-toast__message")?.textContent).toContain("three.png");
+    const names = onAttachmentsChange.mock.calls.flatMap(([next]) =>
+      (next as Array<{ fileName?: string }>).map((a) => a.fileName),
+    );
+    expect(names).toEqual(["one.png", "two.png"]);
+  });
+
   it("rejects a zero-byte file instead of silently dropping it after send", async () => {
     const onAttachmentsChange = vi.fn();
     handleChatAttachmentPaste(

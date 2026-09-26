@@ -275,9 +275,14 @@ export function appendChatAttachmentFiles(
   if (unsupported.length) {
     showToast({ message: t("chat.attachments.imagesOnly") });
   }
+  const existingBytes = currentAttachments(props).reduce(
+    (sum, attachment) => sum + (attachment.sizeBytes ?? 0),
+    0,
+  );
   const files = admitAttachmentFiles(
     candidates.filter((file) => !unsupported.includes(file)),
     props.attachmentLimits,
+    existingBytes,
   );
   if (files.length === 0) {
     return 0;
@@ -315,7 +320,11 @@ export function handleChatAttachmentPaste(
   }
   e.preventDefault();
   if (pasted) {
-    if (admitAttachmentFiles([pasted.file], props.attachmentLimits).length === 0) {
+    const existingBytes = currentAttachments(props).reduce(
+      (sum, attachment) => sum + (attachment.sizeBytes ?? 0),
+      0,
+    );
+    if (admitAttachmentFiles([pasted.file], props.attachmentLimits, existingBytes).length === 0) {
       return;
     }
     props.onAttachmentsChange([

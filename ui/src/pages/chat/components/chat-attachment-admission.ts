@@ -26,6 +26,7 @@ function skippedFilesToast(messageKey: string, skipped: readonly File[]): void {
 export function admitAttachmentFiles(
   candidates: readonly File[],
   limits: { maxBytes: number; maxImageBytes: number } | undefined,
+  existingBytes = 0,
 ): File[] {
   const fileLimit = (file: File) =>
     file.type.startsWith("image/") ? limits?.maxImageBytes : limits?.maxBytes;
@@ -35,5 +36,27 @@ export function admitAttachmentFiles(
   );
   skippedFilesToast("chat.attachments.readFailed", empty);
   skippedFilesToast("chat.attachments.tooLarge", oversized);
-  return candidates.filter((file) => !empty.includes(file) && !oversized.includes(file));
+  const admissible = candidates.filter(
+    (file) => !empty.includes(file) && !oversized.includes(file),
+  );
+  if (limits === undefined) {
+    return admissible;
+  }
+
+  // Each file can clear its own per-file ceiling yet the batch still overflows
+  // the single WS frame that carries every attachment in one message together
+  // (maxBytes is sized to one frame's worth of base64) — the server hard-drops
+  // that oversized frame with a 1009 close for every pane.
+  let total = existingBytes;
+  const overflow: File[] = [];
+  const admitted = admissible.filter((file) => {
+    if (total + file.size > limits.maxBytes) {
+      overflow.push(file);
+      return false;
+    }
+    total += file.size;
+    return true;
+  });
+  skippedFilesToast("chat.attachments.tooLarge", overflow);
+  return admitted;
 }

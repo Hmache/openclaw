@@ -73,6 +73,7 @@ export type PluginApprovalResolved = {
   resolvedBy?: string | null;
   ts: number;
   request?: PluginApprovalRequestPayload;
+  terminalStatus?: "expired" | "cancelled";
 };
 
 export const DEFAULT_PLUGIN_APPROVAL_TIMEOUT_MS = 120_000;
@@ -178,6 +179,9 @@ export function buildPluginApprovalRequestMessage(
 }
 
 export function buildPluginApprovalResolvedMessage(resolved: PluginApprovalResolved): string {
+  if (resolved.terminalStatus === "cancelled") {
+    return `⚠️ Plugin approval cancelled. ID: ${resolved.id}`;
+  }
   const base = `✅ Plugin approval ${approvalDecisionLabel(resolved.decision)}.`;
   const by = resolved.resolvedBy ? ` Resolved by ${resolved.resolvedBy}.` : "";
   return `${base}${by} ID: ${resolved.id}`;

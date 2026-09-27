@@ -25,6 +25,9 @@ function interpretApprovalTerminalOutcome(
   view: ResolvedApprovalView,
   precedence: "application" | "denial",
 ): ApprovalTerminalOutcome {
+  if (view.approvalKind === "plugin" && view.terminalStatus === "cancelled") {
+    return "cancelled";
+  }
   if (view.approvalKind !== "system-agent") {
     return view.decision;
   }

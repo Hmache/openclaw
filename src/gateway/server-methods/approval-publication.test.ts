@@ -43,3 +43,31 @@ describe("publishAppliedApprovalResolution for OpenClaw changes", () => {
     },
   );
 });
+
+describe("publishAppliedApprovalResolution for plugin approvals", () => {
+  it.each(["expired", "cancelled"] as const)(
+    "publishes terminalStatus %s instead of a bare deny decision",
+    async (status) => {
+      const publishResolved = vi.fn();
+      await publishAppliedApprovalResolution({
+        record: {
+          id: "plugin:1",
+          kind: "plugin",
+          status,
+          decision: "deny",
+          resolvedAtMs: 1,
+        } as unknown as PublishParams["record"],
+        liveRecord: { request: {}, resolvedBy: null } as unknown as PublishParams["liveRecord"],
+        context: {
+          broadcast: vi.fn(),
+          broadcastToConnIds: vi.fn(),
+          approvalEvents: { publishResolved },
+        } as unknown as PublishParams["context"],
+      });
+      expect(publishResolved).toHaveBeenCalledWith(
+        "plugin",
+        expect.objectContaining({ terminalStatus: status }),
+      );
+    },
+  );
+});

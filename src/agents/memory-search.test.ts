@@ -296,6 +296,7 @@ describe("memory search config", () => {
 
     expect(resolved?.sources).toEqual(["sessions"]);
     expect(resolved?.searchSources).toEqual(["sessions"]);
+    expect(resolved?.experimental.sessionsSourceIgnored).toBe(false);
   });
 
   it("lets a per-agent false override a default true", () => {
@@ -777,5 +778,15 @@ describe("memory search config", () => {
     });
     const resolved = resolveMemorySearchConfig(cfg, "main");
     expect(resolved?.sources).toEqual(["memory"]);
+    expect(resolved?.experimental.sessionsSourceIgnored).toBe(true);
+  });
+
+  it("does not flag sessions as ignored when never explicitly configured", () => {
+    const resolved = resolveMemorySearchConfig(
+      asConfig({ session: { dmScope: "per-channel-peer" } }),
+      "main",
+    );
+    expect(resolved?.sources).toEqual(["memory"]);
+    expect(resolved?.experimental.sessionsSourceIgnored).toBe(false);
   });
 });

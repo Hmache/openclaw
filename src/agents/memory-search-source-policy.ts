@@ -31,6 +31,7 @@ export function resolveMemorySearchSourcePolicy(params: {
   sources: MemorySearchSource[];
   searchSources: MemorySearchSource[];
   sessionMemory: boolean;
+  sessionsSourceIgnored: boolean;
 } {
   const { configuredSources, rememberAcrossConversations, configuredSessionMemory } = params;
   const sessionMemory = rememberAcrossConversations || configuredSessionMemory;
@@ -43,5 +44,9 @@ export function resolveMemorySearchSourcePolicy(params: {
     rememberAcrossConversations ? [...searchSources, "sessions"] : configuredSources,
     sessionMemory,
   );
-  return { sources, searchSources, sessionMemory };
+  // "sessions" is the only source normalizeSources() ever gates away, so an explicit
+  // request for it that didn't survive means the prerequisite flag silently won.
+  const sessionsSourceIgnored =
+    configuredSources?.includes("sessions") === true && !sources.includes("sessions");
+  return { sources, searchSources, sessionMemory, sessionsSourceIgnored };
 }

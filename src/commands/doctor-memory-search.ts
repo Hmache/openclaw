@@ -182,7 +182,8 @@ type MemorySearchHealthPath =
   | "memory.search.provider"
   | "plugins.slots.memory"
   | "memory.search.remote.baseUrl"
-  | "memory.search.model";
+  | "memory.search.model"
+  | "memory.search.sources";
 
 type MemorySearchHealthReporter = (
   message: string,
@@ -343,6 +344,21 @@ async function inspectMemorySearchHealthForAgent(
       !recallHealth.enabled,
     );
     return;
+  }
+  if (resolved.experimental?.sessionsSourceIgnored) {
+    report(
+      [
+        'Memory search configures "sessions" in memory.search.sources, but session transcripts are not indexed.',
+        "Session sources are only indexed when memory.search.rememberAcrossConversations or memory.search.experimental.sessionMemory is enabled.",
+        "",
+        "Fix (pick one):",
+        `- ${formatCliCommand("openclaw config set memory.search.rememberAcrossConversations true")}`,
+        `- ${formatCliCommand("openclaw config set memory.search.experimental.sessionMemory true")}`,
+        "",
+        `Verify: ${formatCliCommand("openclaw memory status --deep")}`,
+      ].join("\n"),
+      "memory.search.sources",
+    );
   }
   const provider = resolved.provider;
   const normalizedPlugins = normalizePluginsConfig(cfg.plugins);

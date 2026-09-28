@@ -106,11 +106,12 @@ export function resolveMemorySearchIndexConfig(cfg: OpenClawConfig, agentId: str
   const configuredSessionMemory =
     overrides?.experimental?.sessionMemory ?? defaults?.experimental?.sessionMemory ?? false;
   const configuredSources = overrides?.sources ?? defaults?.sources;
-  const { sessionMemory, searchSources, sources } = resolveMemorySearchSourcePolicy({
-    configuredSources,
-    rememberAcrossConversations,
-    configuredSessionMemory,
-  });
+  const { sessionMemory, searchSources, sources, sessionsSourceIgnored } =
+    resolveMemorySearchSourcePolicy({
+      configuredSources,
+      rememberAcrossConversations,
+      configuredSessionMemory,
+    });
   return {
     enabled,
     rememberAcrossConversations,
@@ -143,7 +144,7 @@ export function resolveMemorySearchIndexConfig(cfg: OpenClawConfig, agentId: str
         },
       },
     },
-    experimental: { sessionMemory },
+    experimental: { sessionMemory, sessionsSourceIgnored },
     sync: resolveSyncConfig(),
   };
 }

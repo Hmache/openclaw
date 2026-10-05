@@ -268,6 +268,51 @@ describe("agent activity events", () => {
     }
   });
 
+  test("keeps a completed wrapper whose only recorded child is a routine progress update", () => {
+    const projected = projectAgentHistoryActivity([
+      {
+        messageId: "wrapper",
+        message: {
+          role: "assistant",
+          __openclaw: { runId: "run" },
+          content: [{ type: "toolCall", id: "outer", name: "exec", arguments: {} }],
+        },
+      },
+      {
+        messageId: "child",
+        message: createNestedToolActivity({
+          runId: "run",
+          scopeId: "scope",
+          afterEntryId: "wrapper",
+          startOrder: 1,
+          parentToolCallId: "outer",
+          toolCallId: "child",
+          toolName: "progress_card",
+          input: { markdown: "Plan" },
+          result: { content: [{ type: "text", text: "ok" }] },
+          isError: false,
+          startedAt: 1,
+          timestamp: 2,
+        }),
+      },
+      {
+        messageId: "wrapper-result",
+        message: {
+          role: "toolResult",
+          __openclaw: { runId: "run" },
+          toolCallId: "outer",
+          toolName: "exec",
+          isError: false,
+          content: [{ type: "text", text: "Finished" }],
+        },
+      },
+    ]);
+    expect(projected.find((entry) => entry.messageId === "child")?.items).toEqual([]);
+    expect(projected.find((entry) => entry.messageId === "wrapper")?.items).toEqual([
+      expect.objectContaining({ name: "exec" }),
+    ]);
+  });
+
   test.each([true, false])(
     "does not expose a child assignment in progress (named: %s)",
     (named) => {

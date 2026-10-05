@@ -1,21 +1,54 @@
 import { asOptionalObjectRecord as asRecord } from "@openclaw/normalization-core/record-coerce";
 import { normalizeLowercaseStringOrEmpty } from "@openclaw/normalization-core/string-coerce";
-import { groupToolCalls, type ToolCallIdentity } from "../chat/tool-call-grouping.js";
+import {
+  groupToolCalls,
+  type ToolCallGroup,
+  type ToolCallIdentity,
+} from "../chat/tool-call-grouping.js";
 import { isAgentPlanProgressToolName } from "../session-cards/progress-card-input.js";
 
-/** Only recorded, unambiguous children replace a successfully completed wrapper. */
+/**
+ * Only recorded, unambiguous children replace a successfully completed wrapper,
+ * and only when at least one of them remains countable. Otherwise the wrapper
+ * keeps its own identity instead of leaving the step with nothing to show.
+ */
 export function resolveCompletedActivityWrappers<
-  Call extends ToolCallIdentity & { activity?: { status?: string } },
+  Call extends ToolCallIdentity & {
+    activity?: {
+      status?: string;
+      hideFromChannelProgress?: boolean;
+      suppressChannelProgress?: boolean;
+    };
+  },
 >(calls: readonly Call[]): Set<Call> {
   const wrappers = new Set<Call>();
-  const pending = groupToolCalls(calls);
+  // Post-order walk so each group knows whether its subtree stays countable.
+  const countable = new Map<ToolCallGroup<Call>, boolean>();
+  const pending: Array<{ group: ToolCallGroup<Call>; expanded: boolean }> = groupToolCalls(
+    calls,
+  ).map((group) => ({ group, expanded: false }));
   while (pending.length > 0) {
-    const group = pending.pop()!;
-    if (group.children.length > 0 && group.card.activity?.status === "completed") {
-      wrappers.add(group.card);
+    const { group, expanded } = pending.pop()!;
+    if (!expanded) {
+      pending.push({ group, expanded: true });
+      for (const child of group.children) {
+        pending.push({ group: child, expanded: false });
+      }
+      continue;
     }
-    for (const child of group.children) {
-      pending.push(child);
+    const activity = group.card.activity;
+    if (
+      group.children.length > 0 &&
+      activity?.status === "completed" &&
+      group.children.some((child) => countable.get(child))
+    ) {
+      wrappers.add(group.card);
+      countable.set(group, true);
+    } else {
+      countable.set(
+        group,
+        !activity?.hideFromChannelProgress && !activity?.suppressChannelProgress,
+      );
     }
   }
   return wrappers;

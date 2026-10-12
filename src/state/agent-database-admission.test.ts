@@ -194,6 +194,18 @@ describe("agent database admission", () => {
     expect(assertAdmitted).not.toThrow();
   });
 
+  it("names the agent-specific recovery command when inspection fails", () => {
+    const refusal = createAgentDatabaseInspectionRefusal({
+      agentId: "worker",
+      paths: [],
+      reason: "database disk image is malformed",
+    });
+    expect(refusal.repairHint).toContain(
+      "openclaw doctor --session-sqlite recover --session-sqlite-agent worker",
+    );
+    expect(refusal.repairHint).toContain(".corrupt-<timestamp>");
+  });
+
   it("uses the current preparation scope and refuses an escaped scope after preparation ends", async () => {
     const env = { OPENCLAW_STATE_DIR: tempDirs.make("openclaw-prepared-admission-scope-") };
     const assertAdmitted = captureAgentDatabaseAdmission("main", { env });

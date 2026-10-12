@@ -85,7 +85,7 @@ export function createAgentDatabaseInspectionRefusal(params: {
       ? "Free space in the reported snapshot cache, then retry the update. This candidate snapshot failure does not require repairing the serving database."
       : params.pending
         ? 'Sessions remain unavailable until background inspection and preparation finish. If they cannot complete, stop the Gateway, run "openclaw doctor --fix", and restart.'
-        : 'Sessions remain unavailable. Stop the Gateway, run "openclaw doctor --fix" to inspect and repair this agent database, and restart.',
+        : `Sessions remain unavailable. Stop the Gateway, run "openclaw doctor --fix" to inspect and repair this agent database, and restart. If Doctor refuses the database because it is corrupt, run "openclaw doctor --session-sqlite recover --session-sqlite-agent ${params.agentId}" instead; it sets the damaged files aside as .corrupt-<timestamp>.`,
   };
   refusalCauses.set(refusal, params.cause);
   return refusal;

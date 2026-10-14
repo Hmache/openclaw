@@ -50,6 +50,7 @@ describe("provider overflow messages", () => {
     "Context window exceeded: estimated input 35137 leaves only 0 output tokens within the 32768-token context.",
     "Input validation error: `inputs` tokens + `max_new_tokens` must be <= 32768. Given: 28897 `inputs` tokens and 3872 `max_new_tokens`",
     "Input validation error: `inputs` must have less than 32768 tokens. Given: 40000",
+    "400 InternalError.Algo.InvalidParameter: Range of input length should be [1, 202745]",
     "Trying to keep the first 15857 tokens when context the overflows. However, the model is loaded with context length of only 4096 tokens, which is not enough. Try to load the model with a larger context length, or provide a shorter input.",
   ])("detects %s", (text) => {
     expect(isContextOverflow(errorMessage(text), 262_144)).toBe(true);
@@ -69,6 +70,15 @@ describe("scoped overflow messages", () => {
     expect(
       matchesContextOverflowMessage(
         "input length 14295 tokens exceeds the model limit",
+        "failover-explicit",
+      ),
+    ).toBe(true);
+  });
+
+  it("recognizes the DashScope input-range wording in the strict failover scope", () => {
+    expect(
+      matchesContextOverflowMessage(
+        "Range of input length should be [1, 202745]",
         "failover-explicit",
       ),
     ).toBe(true);

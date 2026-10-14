@@ -37,6 +37,7 @@ const ASSISTANT_OVERFLOW_PATTERNS = [
   /too many tokens/i, // Generic fallback
   /token limit exceeded/i, // Generic fallback
   /^413\s*(?:status code)?\s*\(no body\)/i, // Cerebras: 413 with no body
+  /range of input length should be \[\d+,\s*[\d,]+\]/i, // Alibaba DashScope / Qwen
 ];
 
 const FAILOVER_EXPLICIT_OVERFLOW_PATTERNS = [
@@ -63,6 +64,7 @@ const FAILOVER_EXPLICIT_OVERFLOW_PATTERNS = [
   /413[\s\S]*too large/i,
   /context_window_exceeded/i,
   /input length [\d,]+\s+tokens? exceeds the model limit/i,
+  /range of input length should be \[\d+,\s*[\d,]+\]/i, // Alibaba DashScope / Qwen
   /`?inputs`? tokens \+ `?max_new_tokens`? must be <= [\d,]+/i, // Hugging Face TGI
   /`?inputs`? must have less than [\d,]+ tokens/i, // Hugging Face TGI
   /上下文过长|上下文超出|上下文长度超|超出最大上下文|请压缩上下文/,
